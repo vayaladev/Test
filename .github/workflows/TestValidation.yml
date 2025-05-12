@@ -1,0 +1,30 @@
+name: Test Workflow
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:  # allows manual trigger
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Display GitHub Actor
+        run: echo "The workflow was triggered by ${{ github.actor }}"
+
+      - name: Print working directory
+        run: pwd
+
+      - name: List files in repo
+        run: ls -la
+
+      - name: Say Hello
+        run: echo "Hello from GitHub Actions!"

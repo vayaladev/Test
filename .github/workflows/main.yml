@@ -1,0 +1,38 @@
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v1
+        with:
+          node-version: '14.6.0'
+
+      - name: Install Salesforce CLI & Git Delta Plugin
+        run: |
+          npm install @salesforce/cli --global
+          echo y | sf plugins install sfdx-git-delta
+
+      - name: Generate package.xml
+        run: |
+          sf sgd:source:delta --to "HEAD" --from $(git merge-base HEAD origin/master) --output . -i .gitignore
+          echo "--- package.xml generated with added and modified metadata ---"
+          cat package/package.xml
+
+      - name: Authenticate to PROD
+        run: |
+          echo "${SERVER_KEY_PASSWORD}" > server.key
+          sf auth jwt grant --client-id ${{ secrets.SF_CONSUMER_KEY }} --jwt-key-file server.key --username ${{ secrets.SF_USERNAME }} --alias prod --set-default-dev-hub
+        env:
+          SERVER_KEY_PASSWORD: ${{ secrets.SERVER_KEY_PASSWORD }}
+
+      - name: Validate Deployment in PROD
+        run: |
+          sf deploy metadata validate --target-org prod --manifest package/package.xml --test-level RunLocalTests
